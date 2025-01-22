@@ -2,29 +2,34 @@ from tkinter import *
 import keyboard
 import time
 
+window = False
+isPlaying = False
+canvas = False
+commands = []
+creatingClass = ""
+gravity = 5
+movement = 10
+jumping = 15
+camera = {}
+
+def resizeImage(img, newWidth, newHeight):
+    oldWidth = img.width()
+    oldHeight = img.height()
+    newPhotoImage = PhotoImage(width=newWidth, height=newHeight)
+    for x in range(newWidth):
+        for y in range(newHeight):
+            xOld = int(x*oldWidth/newWidth)
+            yOld = int(y*oldHeight/newHeight)
+            rgb = '#%02x%02x%02x' % img.get(xOld, yOld)
+            newPhotoImage.put(rgb, (x, y))
+    return newPhotoImage
+
 def on_destroy(event):
     global isPlaying
     if event.widget != window:
         return
-    print("[Gamin]: Game Closed By User\n")
+    print("[Gamin]: Level closed\n")
     isPlaying = False
-
-if not __name__ == "__main__":
-    window = Tk()
-    window.title("Gamin Window")
-    window.geometry("700x500")
-    window.bind("<Destroy>", on_destroy)
-    isPlaying = True
-    canvas = Frame(window,width=700,height=500)
-    canvas.place(x=0,y=0)
-
-    commands = []
-    creatingClass = "MAIN"
-
-    gravity = 5
-    movement = 10
-    jumping = movement + 55
-    camera = {'x':0,'y':0}
 
 def addCommand(command):
     global window
@@ -63,14 +68,43 @@ def addCommand(command):
                 changeData(data)
                 commands.append({"type":"-","executed":"config","result":data[1]})
             case "block"|"bloco":
+                if data[5].startswith("img:"):
+                    thisObject = Frame(canvas,width=data[3],height=data[4],bg=canvas['bg'])
+                    objImage = PhotoImage(file=data[5].replace("img:",""))
+                    objImage = resizeImage(objImage,int(data[3])+4,int(data[4])+4)
+                    extraObject = Label(thisObject,image=objImage,width=data[3],height=data[4])
+                    extraObject.image = objImage
+                    extraObject.pack()
+                else:
                     thisObject = Frame(canvas,width=data[3],height=data[4],bg=data[5],relief=RAISED,borderwidth=4)
-                    commands.append({"type":"block","x":data[1],"y":data[2],"object":thisObject,"class":creatingClass})
+                commands.append({"type":"block","x":data[1],"y":data[2],"object":thisObject,"class":creatingClass})
             case "character"|"personagem":
-                    thisObject = Frame(canvas,width=data[4],height=data[5],bg=data[6],relief=SOLID,borderwidth=2)
-                    commands.append({"type":"character","control":data[1],"x":data[2],"y":data[3],"object":thisObject,"class":creatingClass,"jumping":"ground"})
+                if data[5].startswith("img:"):
+                    thisObject = Frame(canvas,width=data[3],height=data[4],bg=canvas['bg'])
+                    objImage = PhotoImage(file=data[5].replace("img:",""))
+                    objImage = resizeImage(objImage,int(data[3])+4,int(data[4])+4)
+                    extraObject = Label(thisObject,image=objImage,width=data[3],height=data[4])
+                    extraObject.image = objImage
+                    extraObject.pack()
+                else:
+                    thisObject = Frame(canvas,width=data[3],height=data[4],bg=data[5],relief=SOLID,borderwidth=2)
+                    commands.append({"type":"character","control":data[6],"x":data[1],"y":data[2],"object":thisObject,"class":creatingClass,"jumping":"ground","velX":0,"velY":0})
             case "background"|"plano":
-                thisObject = Frame(canvas,width=data[3],height=data[4],bg=data[5],relief=FLAT,borderwidth=2)
+                if data[5].startswith("img:"):
+                    thisObject = Frame(canvas,width=data[3],height=data[4],bg=canvas['bg'])
+                    objImage = PhotoImage(file=data[5].replace("img:",""))
+                    objImage = resizeImage(objImage,int(data[3])+4,int(data[4])+4)
+                    extraObject = Label(thisObject,image=objImage,width=data[3],height=data[4])
+                    extraObject.image = objImage
+                    extraObject.pack()
+                else:
+                    thisObject = Frame(canvas,width=data[3],height=data[4],bg=data[5],relief=FLAT,borderwidth=2)
                 commands.append({"type":"background","x":data[1],"y":data[2],"object":thisObject,"class":creatingClass})
+            case "label"|"txt"|"texto":
+                thisObject = Frame(canvas,width=data[3],height=data[4],bg=data[5],relief=FLAT,borderwidth=2)
+                extraObject = Label(thisObject,text=data[6].replace("_"," "),font=("Arial",data[4]),bg=data[5])
+                extraObject.pack()
+                commands.append({"type":"txt","x":data[1],"y":data[2],"object":thisObject,"class":creatingClass})
             case _:
                 print(f"\n[Gamin ERR: Line {line}]: This command does not exist\n")
                 commands.append({"type":"-","result":"ERROR"})
@@ -84,12 +118,39 @@ def addCommand(command):
         print(f"\n[Gamin ERR: Line {line}]: Invalid number for parameter\n")
         commands.append({"type":"-","result":"ERROR"})
 
-def loadGame(fileName):
+def loadLevel(fileName):
+    global window
+    global isPlaying
+    global canvas
+    global commands
+    global creatingClass
+    global gravity
+    global movement
+    global jumping
+    global camera
+    #prep
+    window = Tk()
+    window.title("Gamin Window")
+    window.geometry("700x500")
+    window.bind("<Destroy>", on_destroy)
+    isPlaying = True
+    canvas = Frame(window,width=700,height=500)
+    canvas.place(x=0,y=0)
+    commands = []
+    creatingClass = "MAIN"
+    gravity = 5
+    movement = 10
+    jumping = 15
+    camera = {'x':0,'y':0}
+
+    #level
     with open(fileName + ".gmn","r") as sheet:
         itens = sheet.readlines()
         for item in itens:
             addCommand(item)
         
+def closeLevel():
+    window.destroy()
 
 def getResource(line,property=""):
     if property == "":
@@ -98,12 +159,15 @@ def getResource(line,property=""):
         try:
             return commands[line-1][property]
         except KeyError:
-            print(f"[Gamin ERR]: No property in {line}")
-            return ""
+            try:
+                return commands[line-1]['object'][property]
+            except KeyError:
+                print(f"[Gamin ERR]: No property in {line}")
+                return ""
 
 def changeResource(line,property,edit):
     match property:
-        case 'x'|'y'|'class'|'type':
+        case 'x'|'y'|'class'|'type'|'jumping'|'control':
             commands[line-1][property] = edit
         case _:
             commands[line-1]['object'][property] = edit
@@ -149,11 +213,20 @@ def printResources(resource_group="MAIN"):
                 pass
     print()
 
-def test_range(object1,object2,inrange):
+def test_range(object1,object2,inrange,direction='all'):
     obj1 = commands[object1 -1]
     obj2 = commands[object2 -1]
     try:
-        return (int(obj1['x']) < int(obj2['x']) + inrange + int(obj2["object"]['width'])) and (int(obj1['x']) + int(obj1["object"]['width']) > int(obj2['x']) - inrange) and (int(obj1['y']) < int(obj2['y']) + inrange + int(obj2["object"]['height'])) and (int(obj1['y']) + int(obj1["object"]['height']) > int(obj2['y']) - inrange)
+        if direction == "top":
+            return (int(obj1['y']) + int(obj1["object"]['height']) > int(obj2['y']) - inrange and int(obj1['y']) + int(obj1["object"]['height']) < int(obj2['y']) + inrange) and (int(obj1['x']) < int(obj2['x']) + inrange + int(obj2["object"]['width'])) and (int(obj1['x']) + int(obj1["object"]['width']) > int(obj2['x']) - inrange)
+        elif direction == "bottom":
+            return (int(obj1['y']) < int(obj2['y']) + inrange + int(obj2["object"]['height']) and int(obj1['y']) > int(obj2['y']) - inrange + int(obj2["object"]['height'])) and (int(obj1['x']) < int(obj2['x']) + inrange + int(obj2["object"]['width'])) and (int(obj1['x']) + int(obj1["object"]['width']) > int(obj2['x']) - inrange)
+        elif direction == "left":
+            return (int(obj1['x']) + int(obj1["object"]['width']) > int(obj2['x']) - inrange and int(obj1['x']) + int(obj1["object"]['width']) < int(obj2['x']) + inrange) and (int(obj1['y']) < int(obj2['y']) + inrange + int(obj2["object"]['height'])) and (int(obj1['y']) + int(obj1["object"]['height']) > int(obj2['y']) - inrange)
+        elif direction == "right":
+            return (int(obj1['x']) < int(obj2['x']) + inrange + int(obj2["object"]['width']) and int(obj1['x']) > int(obj2['x']) - inrange + int(obj2["object"]['width'])) and (int(obj1['y']) < int(obj2['y']) + inrange + int(obj2["object"]['height'])) and (int(obj1['y']) + int(obj1["object"]['height']) > int(obj2['y']) - inrange)
+        else:
+            return (int(obj1['x']) < int(obj2['x']) + inrange + int(obj2["object"]['width'])) and (int(obj1['x']) + int(obj1["object"]['width']) > int(obj2['x']) - inrange) and (int(obj1['y']) < int(obj2['y']) + inrange + int(obj2["object"]['height'])) and (int(obj1['y']) + int(obj1["object"]['height']) > int(obj2['y']) - inrange)
     except KeyError:
         print("\n[Gamin ERR]: Class has non object resources")
 
@@ -195,6 +268,9 @@ def gameUpdate():
             elif command["type"] == "character":
                 command["object"].place(x=int(command["x"])-int(camera['x'])+canvas["width"]//2,y=int(command["y"])-int(camera['y'])+canvas["height"]//2)
                 move(loop+1,0,gravity,["block"])
+                if command['velY'] > 0:
+                    command['velY'] -= 1
+                    move(loop+1,0,-movement,["block"])
                 if command["control"] == "wasd":
                     if keyboard.is_pressed("w"):
                         if command['jumping'] == 'ground':
@@ -202,12 +278,12 @@ def gameUpdate():
                             for block in commands:
                                 bloop += 1
                                 if block['type'] == 'block':
-                                    if test_range(bloop,loop+1,5):
-                                        move(loop+1,0,-jumping,["block"])
+                                    if test_range(bloop,loop+1,5,'bottom'):
+                                        command['velY'] = jumping
                         else:
-                           move(loop+1,0,-jumping,["block"]) 
+                           move(loop+1,0,-movement,["block"]) 
                     if keyboard.is_pressed("s"):
-                        move(loop+1,0,jumping,["block"])
+                        move(loop+1,0,movement,["block"])
                     if keyboard.is_pressed("a"):
                         move(loop+1,-movement,0,["block"])
                     if keyboard.is_pressed("d"):
@@ -219,12 +295,12 @@ def gameUpdate():
                             for block in commands:
                                 bloop += 1
                                 if block['type'] == 'block':
-                                    if test_range(bloop,loop+1,5):
-                                        move(loop+1,0,-jumping,["block"])
+                                    if test_range(bloop,loop+1,5,'bottom'):
+                                        command['velY'] = jumping
                         else:
-                           move(loop+1,0,-jumping,["block"]) 
+                           move(loop+1,0,-movement,["block"]) 
                     if keyboard.is_pressed("down"):
-                        move(loop+1,0,jumping,["block"])
+                        move(loop+1,0,movement,["block"])
                     if keyboard.is_pressed("left"):
                         move(loop+1,-movement,0,["block"])
                     if keyboard.is_pressed("right"):
@@ -233,6 +309,9 @@ def gameUpdate():
             elif command["type"] == "background":
                 command["object"].place(x=int(command["x"])-int(camera['x'])+canvas["width"]//2,y=int(command["y"])-int(camera['y'])+canvas["height"]//2)
             
+            elif command["type"] == "txt":
+                command["object"].place(x=int(command["x"])-int(camera['x'])+canvas["width"]//2,y=int(command["y"])-int(camera['y'])+canvas["height"]//2)
+
             loop += 1
 
         window.update()
@@ -246,8 +325,8 @@ if __name__ == "__main__":
         username = input("Project Name: ")
         with open(username+".py","a") as pyfile:
             pyfile.write(f"import Gamin\nGamin.loadGame('{username}')\n\nwhile Gamin.isPlaying:\n    Gamin.gameUpdate()")
-        with open(username+".gmn","a") as pyfile:
-            pyfile.write(f"- {username}_project")
+        with open(username+".gmn","a") as gmnfile:
+            gmnfile.write(f"- {username}_project")
     elif useroption == "2":
         import webbrowser
         webbrowser.open("https://github.com/catMeooww/Gamin-Py")
