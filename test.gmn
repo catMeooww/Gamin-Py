@@ -1,0 +1,4 @@
+config gravity 0
+config jumping 10
+character 0 0 20 20 blue wasd
+block 30 30 50 50 orange

@@ -5,12 +5,13 @@ property background cyan
 - deffining_map
 group map
 background 150 350 200 100 #ffffff
-block 150 450 200 50 #000000
-block 350 400 200 50 #000000
+block 150 450 200 50 img:stone.png
+block 350 400 200 50 img:stone.png
 block 600 450 300 50 #aaaaaa
 - deffining_characters
 group players
-character wasd 200 420 30 30 blue
-character arrows 700 0 30 30 orange
+character 200 420 30 30 blue wasd
+character 700 0 30 30 orange arrows
 group activators
 background 950 500 50 50 red
+label 400 0 400 50 cyan Level_1

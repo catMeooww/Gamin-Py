@@ -1,0 +1,10 @@
+- definindo_propriedades
+propriedade title My_Game
+propriedade size 1200 600
+propriedade background cyan
+- definindo_mapa
+plano 150 350 200 100 white
+bloco 150 450 200 50 black
+bloco 350 400 200 50 black
+- definindo_personagens
+personagem 200 420 30 30 blue wasd
