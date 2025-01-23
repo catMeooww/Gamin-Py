@@ -88,7 +88,7 @@ def addCommand(command):
                     extraObject.pack()
                 else:
                     thisObject = Frame(canvas,width=data[3],height=data[4],bg=data[5],relief=SOLID,borderwidth=2)
-                    commands.append({"type":"character","control":data[6],"x":data[1],"y":data[2],"object":thisObject,"class":creatingClass,"jumping":"ground","velX":0,"velY":0})
+                commands.append({"type":"character","control":data[6],"x":data[1],"y":data[2],"object":thisObject,"class":creatingClass,"jumping":"ground","velX":0,"velY":0})
             case "background"|"plano":
                 if data[5].startswith("img:"):
                     thisObject = Frame(canvas,width=data[3],height=data[4],bg=canvas['bg'])
@@ -144,10 +144,11 @@ def loadLevel(fileName):
     camera = {'x':0,'y':0}
 
     #level
-    with open(fileName + ".gmn","r") as sheet:
-        itens = sheet.readlines()
-        for item in itens:
-            addCommand(item)
+    if fileName != False:
+        with open(fileName + ".gmn","r") as sheet:
+            itens = sheet.readlines()
+            for item in itens:
+                addCommand(item)
         
 def closeLevel():
     window.destroy()
@@ -182,6 +183,8 @@ def changeData(values):
             canvas["width"] = int(values[2])
             canvas["height"] = int(values[3])
             camera = {'x': int(values[2])//2, 'y':int(values[3])//2}
+        elif values[1] == "icon":
+            window.iconbitmap(values[2].replace("img:",""))
         elif values[1] == "background":
             canvas["bg"] = values[2]
         elif values[1] == "offset":
@@ -268,9 +271,16 @@ def gameUpdate():
             elif command["type"] == "character":
                 command["object"].place(x=int(command["x"])-int(camera['x'])+canvas["width"]//2,y=int(command["y"])-int(camera['y'])+canvas["height"]//2)
                 move(loop+1,0,gravity,["block"])
-                if command['velY'] > 0:
-                    command['velY'] -= 1
-                    move(loop+1,0,-movement,["block"])
+                if command['velY'] != 0 or command['velX'] != 0:
+                    move(loop+1,command['velX'],command['velY'],["block"])
+                    if command['velY'] > 0:
+                        command['velY'] -= 1
+                    elif command['velY'] < 0:
+                        command['velY'] += 1
+                    if command['velX'] > 0:
+                        command['velX'] -= 1
+                    elif command['velX'] < 0:
+                        command['velX'] += 1
                 if command["control"] == "wasd":
                     if keyboard.is_pressed("w"):
                         if command['jumping'] == 'ground':
@@ -279,7 +289,7 @@ def gameUpdate():
                                 bloop += 1
                                 if block['type'] == 'block':
                                     if test_range(bloop,loop+1,5,'bottom'):
-                                        command['velY'] = jumping
+                                        command['velY'] = -jumping
                         else:
                            move(loop+1,0,-movement,["block"]) 
                     if keyboard.is_pressed("s"):
@@ -296,7 +306,7 @@ def gameUpdate():
                                 bloop += 1
                                 if block['type'] == 'block':
                                     if test_range(bloop,loop+1,5,'bottom'):
-                                        command['velY'] = jumping
+                                        command['velY'] = -jumping
                         else:
                            move(loop+1,0,-movement,["block"]) 
                     if keyboard.is_pressed("down"):
@@ -324,9 +334,9 @@ if __name__ == "__main__":
     if useroption == "1":
         username = input("Project Name: ")
         with open(username+".py","a") as pyfile:
-            pyfile.write(f"import Gamin\nGamin.loadGame('{username}')\n\nwhile Gamin.isPlaying:\n    Gamin.gameUpdate()")
+            pyfile.write(f"import Gamin\nGamin.loadLevel('{username}')\n\nwhile Gamin.isPlaying:\n    Gamin.gameUpdate()")
         with open(username+".gmn","a") as gmnfile:
             gmnfile.write(f"- {username}_project")
     elif useroption == "2":
         import webbrowser
-        webbrowser.open("https://github.com/catMeooww/Gamin-Py")
+        webbrowser.open("https://catmeooww.github.io/Index-Dev/page.html?-ODNvVVaLs_twwGHgJ7Q!0")
